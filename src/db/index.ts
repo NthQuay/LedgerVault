@@ -1,17 +1,11 @@
-import { Pool } from "pg";
-import { drizzle } from "drizzle-orm/node-postgres";
+import { neon } from "@neondatabase/serverless";
+import { drizzle } from "drizzle-orm/neon-http";
 import * as schema from "./schema";
 
-declare global {
-  var __ledgervaultPool: Pool | undefined;
+if (!process.env.DATABASE_URL) {
+  throw new Error("DATABASE_URL is not set");
 }
 
-const pool =
-  globalThis.__ledgervaultPool ??
-  new Pool({ connectionString: process.env.DATABASE_URL });
+const sql = neon(process.env.DATABASE_URL);
 
-if (process.env.NODE_ENV !== "production") {
-  globalThis.__ledgervaultPool = pool;
-}
-
-export const db = drizzle(pool, { schema });
+export const db = drizzle(sql, { schema });

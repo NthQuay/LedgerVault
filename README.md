@@ -7,47 +7,51 @@ time. Built with Next.js, Drizzle ORM, and Postgres.
 ## Stack
 
 - **Next.js 16** (App Router) + TypeScript + Tailwind CSS
-- **Postgres** via Drizzle ORM — works with a local Postgres for development
-  and [Neon](https://neon.tech) (free tier) for production. Receipts,
-  invoices, and documents are stored as files directly in Postgres, so there's
-  no separate storage service to configure.
+- **Postgres on [Neon](https://neon.tech)**, accessed via Drizzle ORM and the
+  `@neondatabase/serverless` HTTP driver (`drizzle-orm/neon-http`). This talks
+  to Neon over plain HTTPS rather than a raw Postgres TCP connection, which is
+  what lets it run on serverless/edge hosting (and on networks that only allow
+  outbound HTTPS). Receipts, invoices, and documents are stored as files
+  directly in Postgres, so there's no separate storage service to configure.
 - **Auth.js** (Credentials provider) for login — single business-owner
   account, no public sign-up.
+- Neon project is managed via `neon.ts` + the Neon CLI (`neon deploy`), linked
+  in `.neon` (gitignored, machine-specific).
 
 ## Local development
 
-1. Have a Postgres database available (locally, or a free [Neon](https://neon.tech) project).
-2. Copy `.env.example` to `.env.local` and fill in `DATABASE_URL` and `AUTH_SECRET`.
-3. Install dependencies and run migrations:
-
-   ```bash
-   npm install
-   npm run db:migrate
-   ```
-
-4. Create your login and seed default expense categories:
+1. Install dependencies: `npm install`
+2. This project is linked to a Neon project (see `neon.ts`). Get a connection
+   string for your own branch — either run `neon checkout dev --create` to
+   make a personal dev branch, or use the CLI's `neon env pull` — and set
+   `DATABASE_URL` in `.env.local`. Because the app uses Neon's HTTP driver,
+   `DATABASE_URL` must point at an actual Neon endpoint; a local/non-Neon
+   Postgres won't work with this driver.
+3. Set `AUTH_SECRET` in `.env.local` (see `.env.example` for how to generate one).
+4. Run migrations: `npm run db:migrate`
+5. Create your login and seed default expense categories:
 
    ```bash
    # add ADMIN_EMAIL / ADMIN_PASSWORD to .env.local first, then:
    npm run seed
    ```
 
-5. Start the dev server:
+6. Start the dev server: `npm run dev`
 
-   ```bash
-   npm run dev
-   ```
+If your network only allows outbound HTTPS through an explicit proxy (as in
+some sandboxed dev containers), Node's built-in `fetch` may not pick up
+`HTTPS_PROXY` automatically — prefix commands that hit the database
+(`db:migrate`, `seed`, `dev`, `build`, `start`) with `NODE_USE_ENV_PROXY=1` if
+you see `fetch failed` errors. This is not needed on a normal machine or
+standard hosting platform.
 
-## Moving to Neon for production
+## Deploying
 
-1. Create a free project at [console.neon.tech](https://console.neon.tech).
-2. Set `DATABASE_URL` (in your hosting platform's environment variables, e.g.
-   Vercel) to the connection string Neon gives you.
-3. Run `npm run db:migrate` once against that `DATABASE_URL` to create the
-   schema, then `npm run seed` (with `ADMIN_EMAIL`/`ADMIN_PASSWORD` set) to
-   create your login.
-4. Since this is plain Postgres, moving the database again later (e.g. to
-   Supabase) is a standard `pg_dump` / `pg_restore` — no app code changes.
+Set `DATABASE_URL` and `AUTH_SECRET` as environment variables on your hosting
+platform (e.g. Vercel), pointing `DATABASE_URL` at your production Neon
+branch. Run `npm run db:migrate` once against that branch before first
+deploy. Since the connection is plain HTTPS, this also works unmodified on
+edge/serverless runtimes.
 
 ## What's here
 
