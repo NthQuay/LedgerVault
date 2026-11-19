@@ -44,12 +44,20 @@ export default async function ExpensesPage({
             {rows.length} transactions · total {formatMoney(total)}
           </p>
         </div>
-        <Link
-          href="/expenses/new"
-          className="rounded-lg bg-emerald-600 text-white text-sm font-medium px-4 py-2 hover:bg-emerald-700"
-        >
-          + Add expense
-        </Link>
+        <div className="flex gap-2">
+          <Link
+            href="/expenses/import"
+            className="rounded-lg border border-slate-300 dark:border-slate-700 text-sm font-medium px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800"
+          >
+            Import from spreadsheet
+          </Link>
+          <Link
+            href="/expenses/new"
+            className="rounded-lg bg-emerald-600 text-white text-sm font-medium px-4 py-2 hover:bg-emerald-700"
+          >
+            + Add expense
+          </Link>
+        </div>
       </div>
 
       <div className="flex gap-1 mb-4 flex-wrap">
