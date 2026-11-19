@@ -110,20 +110,37 @@ export function parseExpenseWorkbook(buffer: ArrayBuffer): {
   const get = (row: unknown[], field: string) =>
     columnMap[field] !== undefined ? row[columnMap[field]] : null;
 
+  // When several line items share one receipt (e.g. two fees on one
+  // invoice), spreadsheets often show this as merged Date/Company/Reference
+  // cells. Exported to plain values, only the first row of that merge keeps
+  // those values - the rest are blank. Carry the last-seen value down so
+  // those continuation rows aren't wrongly flagged as missing a date.
+  let lastDate: Date | null = null;
+  let lastVendor = "";
+  let lastReference = "";
+
   const rows: ParsedExpenseRow[] = [];
   for (let i = headerRowIndex + 1; i < grid.length; i++) {
     const raw = grid[i] ?? [];
 
-    const dateValue = parseCellDate(get(raw, "date"));
+    let dateValue = parseCellDate(get(raw, "date"));
     const description = String(get(raw, "description") ?? "").trim();
-    const vendor = String(get(raw, "vendor") ?? "").trim();
+    let vendor = String(get(raw, "vendor") ?? "").trim();
 
     if (!dateValue && !description && !vendor) continue; // blank/trailing row
 
+    if (!dateValue && lastDate) dateValue = lastDate;
+    if (!vendor && lastVendor) vendor = lastVendor;
+
     const category = String(get(raw, "category") ?? "").trim();
-    const reference = String(get(raw, "reference") ?? "").trim();
+    let reference = String(get(raw, "reference") ?? "").trim();
+    if (!reference && lastReference) reference = lastReference;
     const duration = String(get(raw, "duration") ?? "").trim();
     const method = String(get(raw, "method") ?? "").trim();
+
+    if (dateValue) lastDate = dateValue;
+    if (vendor) lastVendor = vendor;
+    if (reference) lastReference = reference;
 
     const totalValue = parseCellNumber(get(raw, "total"));
     const amountValue = parseCellNumber(get(raw, "amount"));
