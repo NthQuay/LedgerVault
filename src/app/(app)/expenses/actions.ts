@@ -29,30 +29,45 @@ function parseExpenseForm(formData: FormData) {
   return { date, description, vendor, categoryId, amount, taxAmount, paymentMethod, notes };
 }
 
-export async function createExpense(formData: FormData) {
-  const parsed = parseExpenseForm(formData);
-  const fyStartMonth = await getFyStartMonth();
-  const fy = fyForDate(parsed.date, fyStartMonth);
-  const receipt = formData.get("receipt") as File | null;
-  const fileId = await storeUploadedFile(receipt);
+export async function createExpense(
+  _prevState: string | undefined,
+  formData: FormData,
+): Promise<string | undefined> {
+  try {
+    const parsed = parseExpenseForm(formData);
+    const fyStartMonth = await getFyStartMonth();
+    const fy = fyForDate(parsed.date, fyStartMonth);
+    const receipt = formData.get("receipt") as File | null;
+    const fileId = await storeUploadedFile(receipt);
 
-  await db.insert(expenses).values({ ...parsed, fy, fileId });
+    await db.insert(expenses).values({ ...parsed, fy, fileId });
+  } catch (error) {
+    return error instanceof Error ? error.message : "Something went wrong.";
+  }
   revalidatePath("/expenses");
   revalidatePath("/");
   redirect("/expenses");
 }
 
-export async function updateExpense(id: string, formData: FormData) {
-  const parsed = parseExpenseForm(formData);
-  const fyStartMonth = await getFyStartMonth();
-  const fy = fyForDate(parsed.date, fyStartMonth);
-  const receipt = formData.get("receipt") as File | null;
-  const newFileId = await storeUploadedFile(receipt);
+export async function updateExpense(
+  id: string,
+  _prevState: string | undefined,
+  formData: FormData,
+): Promise<string | undefined> {
+  try {
+    const parsed = parseExpenseForm(formData);
+    const fyStartMonth = await getFyStartMonth();
+    const fy = fyForDate(parsed.date, fyStartMonth);
+    const receipt = formData.get("receipt") as File | null;
+    const newFileId = await storeUploadedFile(receipt);
 
-  await db
-    .update(expenses)
-    .set({ ...parsed, fy, ...(newFileId ? { fileId: newFileId } : {}) })
-    .where(eq(expenses.id, id));
+    await db
+      .update(expenses)
+      .set({ ...parsed, fy, ...(newFileId ? { fileId: newFileId } : {}) })
+      .where(eq(expenses.id, id));
+  } catch (error) {
+    return error instanceof Error ? error.message : "Something went wrong.";
+  }
   revalidatePath("/expenses");
   revalidatePath("/");
   redirect("/expenses");

@@ -11,33 +11,21 @@ type Initial = {
   notes?: string;
 };
 
-async function wrapAction(
-  action: (formData: FormData) => Promise<void>,
-  _prevState: string | undefined,
+type SourceAction = (
+  prevState: string | undefined,
   formData: FormData,
-): Promise<string | undefined> {
-  try {
-    await action(formData);
-  } catch (error) {
-    if (error instanceof Error) return error.message;
-    throw error;
-  }
-}
+) => Promise<string | undefined>;
 
 export function SourceForm({
   action,
   initial,
   submitLabel = "Save",
 }: {
-  action: (formData: FormData) => Promise<void>;
+  action: SourceAction;
   initial?: Initial;
   submitLabel?: string;
 }) {
-  const [error, formAction, pending] = useActionState(
-    (prevState: string | undefined, formData: FormData) =>
-      wrapAction(action, prevState, formData),
-    undefined,
-  );
+  const [error, formAction, pending] = useActionState(action, undefined);
 
   return (
     <form action={formAction} className="space-y-4 max-w-xl">

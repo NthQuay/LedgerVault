@@ -13,18 +13,10 @@ type Initial = {
   fileId?: string | null;
 };
 
-async function wrapAction(
-  action: (formData: FormData) => Promise<void>,
-  _prevState: string | undefined,
+type IncomeAction = (
+  prevState: string | undefined,
   formData: FormData,
-): Promise<string | undefined> {
-  try {
-    await action(formData);
-  } catch (error) {
-    if (error instanceof Error) return error.message;
-    throw error;
-  }
-}
+) => Promise<string | undefined>;
 
 export function IncomeEntryForm({
   action,
@@ -32,16 +24,12 @@ export function IncomeEntryForm({
   initial,
   submitLabel = "Save income",
 }: {
-  action: (formData: FormData) => Promise<void>;
+  action: IncomeAction;
   sources: Source[];
   initial?: Initial;
   submitLabel?: string;
 }) {
-  const [error, formAction, pending] = useActionState(
-    (prevState: string | undefined, formData: FormData) =>
-      wrapAction(action, prevState, formData),
-    undefined,
-  );
+  const [error, formAction, pending] = useActionState(action, undefined);
 
   return (
     <form action={formAction} className="space-y-4 max-w-xl">
@@ -116,7 +104,7 @@ export function IncomeEntryForm({
           type="file"
           name="invoice"
           accept="application/pdf,image/*"
-          className="w-full text-sm"
+          className="w-full text-sm text-slate-500 dark:text-slate-400 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 dark:file:bg-slate-800 file:text-slate-700 dark:file:text-slate-200 file:text-sm file:font-medium file:px-4 file:py-2 file:cursor-pointer hover:file:bg-slate-200 dark:hover:file:bg-slate-700"
         />
         {initial?.fileId && (
           <a

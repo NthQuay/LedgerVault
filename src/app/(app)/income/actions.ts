@@ -25,30 +25,45 @@ function parseEntryForm(formData: FormData) {
   return { date, description, sourceId, amount, notes };
 }
 
-export async function createIncomeEntry(formData: FormData) {
-  const parsed = parseEntryForm(formData);
-  const fyStartMonth = await getFyStartMonth();
-  const fy = fyForDate(parsed.date, fyStartMonth);
-  const invoice = formData.get("invoice") as File | null;
-  const fileId = await storeUploadedFile(invoice);
+export async function createIncomeEntry(
+  _prevState: string | undefined,
+  formData: FormData,
+): Promise<string | undefined> {
+  try {
+    const parsed = parseEntryForm(formData);
+    const fyStartMonth = await getFyStartMonth();
+    const fy = fyForDate(parsed.date, fyStartMonth);
+    const invoice = formData.get("invoice") as File | null;
+    const fileId = await storeUploadedFile(invoice);
 
-  await db.insert(incomeEntries).values({ ...parsed, fy, fileId });
+    await db.insert(incomeEntries).values({ ...parsed, fy, fileId });
+  } catch (error) {
+    return error instanceof Error ? error.message : "Something went wrong.";
+  }
   revalidatePath("/income");
   revalidatePath("/");
   redirect("/income");
 }
 
-export async function updateIncomeEntry(id: string, formData: FormData) {
-  const parsed = parseEntryForm(formData);
-  const fyStartMonth = await getFyStartMonth();
-  const fy = fyForDate(parsed.date, fyStartMonth);
-  const invoice = formData.get("invoice") as File | null;
-  const newFileId = await storeUploadedFile(invoice);
+export async function updateIncomeEntry(
+  id: string,
+  _prevState: string | undefined,
+  formData: FormData,
+): Promise<string | undefined> {
+  try {
+    const parsed = parseEntryForm(formData);
+    const fyStartMonth = await getFyStartMonth();
+    const fy = fyForDate(parsed.date, fyStartMonth);
+    const invoice = formData.get("invoice") as File | null;
+    const newFileId = await storeUploadedFile(invoice);
 
-  await db
-    .update(incomeEntries)
-    .set({ ...parsed, fy, ...(newFileId ? { fileId: newFileId } : {}) })
-    .where(eq(incomeEntries.id, id));
+    await db
+      .update(incomeEntries)
+      .set({ ...parsed, fy, ...(newFileId ? { fileId: newFileId } : {}) })
+      .where(eq(incomeEntries.id, id));
+  } catch (error) {
+    return error instanceof Error ? error.message : "Something went wrong.";
+  }
   revalidatePath("/income");
   revalidatePath("/");
   redirect("/income");
@@ -74,25 +89,40 @@ function parseSourceForm(formData: FormData) {
   return { name, type, status, billingAmount, billingFrequency, notes, startedAt: new Date() };
 }
 
-export async function createIncomeSource(formData: FormData) {
-  const parsed = parseSourceForm(formData);
-  await db.insert(incomeSources).values(parsed);
+export async function createIncomeSource(
+  _prevState: string | undefined,
+  formData: FormData,
+): Promise<string | undefined> {
+  try {
+    const parsed = parseSourceForm(formData);
+    await db.insert(incomeSources).values(parsed);
+  } catch (error) {
+    return error instanceof Error ? error.message : "Something went wrong.";
+  }
   revalidatePath("/income/sources");
   revalidatePath("/");
   redirect("/income/sources");
 }
 
-export async function updateIncomeSource(id: string, formData: FormData) {
-  const parsed = parseSourceForm(formData);
-  const rest = {
-    name: parsed.name,
-    type: parsed.type,
-    status: parsed.status,
-    billingAmount: parsed.billingAmount,
-    billingFrequency: parsed.billingFrequency,
-    notes: parsed.notes,
-  };
-  await db.update(incomeSources).set(rest).where(eq(incomeSources.id, id));
+export async function updateIncomeSource(
+  id: string,
+  _prevState: string | undefined,
+  formData: FormData,
+): Promise<string | undefined> {
+  try {
+    const parsed = parseSourceForm(formData);
+    const rest = {
+      name: parsed.name,
+      type: parsed.type,
+      status: parsed.status,
+      billingAmount: parsed.billingAmount,
+      billingFrequency: parsed.billingFrequency,
+      notes: parsed.notes,
+    };
+    await db.update(incomeSources).set(rest).where(eq(incomeSources.id, id));
+  } catch (error) {
+    return error instanceof Error ? error.message : "Something went wrong.";
+  }
   revalidatePath("/income/sources");
   revalidatePath("/");
   redirect("/income/sources");

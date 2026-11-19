@@ -3,6 +3,7 @@ import { db } from "@/db";
 import { businessProfile, businessNumbers, documents, settings } from "@/db/schema";
 import { documentCategories } from "@/db/schema";
 import { formatDate } from "@/lib/money";
+import { FormWithError } from "@/components/FormWithError";
 import {
   updateBusinessProfile,
   updateFyStartMonth,
@@ -36,7 +37,7 @@ export default async function BusinessPage() {
 
       <section className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6">
         <h2 className="font-medium text-slate-900 dark:text-slate-100 mb-4">Business profile</h2>
-        <form action={updateBusinessProfile} className="space-y-4">
+        <FormWithError action={updateBusinessProfile} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium mb-1">Trading name</label>
@@ -90,14 +91,14 @@ export default async function BusinessPage() {
           >
             Save profile
           </button>
-        </form>
+        </FormWithError>
       </section>
 
       <section className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6">
         <h2 className="font-medium text-slate-900 dark:text-slate-100 mb-4">
           Financial year
         </h2>
-        <form action={updateFyStartMonth} className="flex items-end gap-3">
+        <FormWithError action={updateFyStartMonth} className="flex items-end gap-3">
           <div>
             <label className="block text-sm font-medium mb-1">Financial year starts in</label>
             <select
@@ -118,7 +119,7 @@ export default async function BusinessPage() {
           >
             Save
           </button>
-        </form>
+        </FormWithError>
         <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
           Default is July, for the Australian tax year. All reports and expense/income filters use this.
         </p>
@@ -148,7 +149,7 @@ export default async function BusinessPage() {
             <li className="text-sm text-slate-400">No business numbers added yet.</li>
           )}
         </ul>
-        <form action={addBusinessNumber} className="flex gap-2 flex-wrap">
+        <FormWithError action={addBusinessNumber} className="flex gap-2 flex-wrap">
           <input
             name="label"
             placeholder="e.g. ABN"
@@ -167,7 +168,7 @@ export default async function BusinessPage() {
           >
             Add
           </button>
-        </form>
+        </FormWithError>
       </section>
 
       <section className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6">
@@ -203,47 +204,66 @@ export default async function BusinessPage() {
             <li className="text-sm text-slate-400">No documents uploaded yet.</li>
           )}
         </ul>
-        <form action={addDocument} className="space-y-3">
+        <FormWithError action={addDocument} className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
-            <input
-              name="title"
-              placeholder="Title, e.g. Public liability insurance"
-              required
-              className="rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent px-3 py-2 text-sm"
-            />
-            <select
-              name="category"
-              defaultValue="Other"
-              className="rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent px-3 py-2 text-sm"
-            >
-              {documentCategories.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
+            <div>
+              <label className="block text-sm font-medium mb-1">Title</label>
+              <input
+                name="title"
+                placeholder="e.g. Public liability insurance"
+                required
+                className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent px-3 py-2 text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Category</label>
+              <select
+                name="category"
+                defaultValue="Other"
+                className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent px-3 py-2 text-sm"
+              >
+                {documentCategories.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <input
-              type="date"
-              name="expiryDate"
-              className="rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent px-3 py-2 text-sm"
-            />
-            <input type="file" name="file" accept="application/pdf,image/*" className="text-sm" />
+            <div>
+              <label className="block text-sm font-medium mb-1">Expiry date (optional)</label>
+              <input
+                type="date"
+                name="expiryDate"
+                className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent px-3 py-2 text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">File (PDF or image)</label>
+              <input
+                type="file"
+                name="file"
+                accept="application/pdf,image/*"
+                className="w-full text-sm text-slate-500 dark:text-slate-400 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 dark:file:bg-slate-800 file:text-slate-700 dark:file:text-slate-200 file:text-sm file:font-medium file:px-4 file:py-2 file:cursor-pointer hover:file:bg-slate-200 dark:hover:file:bg-slate-700"
+              />
+            </div>
           </div>
-          <textarea
-            name="description"
-            placeholder="Notes (optional)"
-            rows={2}
-            className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent px-3 py-2 text-sm"
-          />
+          <div>
+            <label className="block text-sm font-medium mb-1">Notes (optional)</label>
+            <textarea
+              name="description"
+              rows={2}
+              className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent px-3 py-2 text-sm"
+            />
+          </div>
           <button
             type="submit"
             className="rounded-lg border border-slate-300 dark:border-slate-700 text-sm font-medium px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800"
           >
             Upload document
           </button>
-        </form>
+        </FormWithError>
       </section>
     </div>
   );
