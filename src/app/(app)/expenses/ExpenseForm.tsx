@@ -1,6 +1,8 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
+import { parsePastedExpenseLine } from "@/lib/parse-paste";
+import { gstFromTotal } from "@/lib/money";
 
 type Category = { id: string; name: string };
 
@@ -34,8 +36,104 @@ export function ExpenseForm({
 }) {
   const [error, formAction, pending] = useActionState(action, undefined);
 
+  const [date, setDate] = useState(initial?.date ?? new Date().toISOString().slice(0, 10));
+  const [description, setDescription] = useState(initial?.description ?? "");
+  const [vendor, setVendor] = useState(initial?.vendor ?? "");
+  const [categoryId, setCategoryId] = useState(initial?.categoryId ?? "");
+  const [amount, setAmount] = useState(initial?.amount ?? "");
+  const [taxAmount, setTaxAmount] = useState(initial?.taxAmount ?? "");
+  // New expenses default to auto-calculated GST; editing an existing one
+  // keeps its stored value untouched unless the user opts back into auto.
+  const [gstAuto, setGstAuto] = useState(!initial);
+  const [paymentMethod, setPaymentMethod] = useState(initial?.paymentMethod ?? "");
+  const [notes, setNotes] = useState(initial?.notes ?? "");
+
+  const [pasteText, setPasteText] = useState("");
+  const [pasteNote, setPasteNote] = useState<string | undefined>();
+
+  function recalculateTax(amountValue: string) {
+    const n = Number(amountValue);
+    setTaxAmount(Number.isFinite(n) && n > 0 ? gstFromTotal(n).toFixed(2) : "");
+  }
+
+  function handleAmountChange(value: string) {
+    setAmount(value);
+    if (gstAuto) recalculateTax(value);
+  }
+
+  function handleTaxChange(value: string) {
+    setTaxAmount(value);
+    setGstAuto(false);
+  }
+
+  function handleAutoGstToggle() {
+    setGstAuto(true);
+    recalculateTax(amount);
+  }
+
+  function handleFillFromPaste() {
+    const parsed = parsePastedExpenseLine(pasteText);
+    const foundAnything = Boolean(parsed.date || parsed.amount || parsed.description);
+    if (!foundAnything) {
+      setPasteNote(
+        "Couldn't find enough information in that text — try pasting a full row, or fill in the fields manually.",
+      );
+      return;
+    }
+
+    if (parsed.date) setDate(parsed.date);
+    if (parsed.vendor) setVendor(parsed.vendor);
+    if (parsed.description) setDescription(parsed.description);
+    if (parsed.paymentMethod) setPaymentMethod(parsed.paymentMethod);
+    if (parsed.notes) setNotes(parsed.notes);
+    if (parsed.amount) handleAmountChange(parsed.amount);
+    if (parsed.taxAmount) {
+      setTaxAmount(parsed.taxAmount);
+      setGstAuto(false);
+    }
+
+    if (parsed.categoryName) {
+      const match = categories.find(
+        (c) => c.name.toLowerCase() === parsed.categoryName!.toLowerCase(),
+      );
+      if (match) {
+        setCategoryId(match.id);
+        setPasteNote(undefined);
+      } else {
+        setPasteNote(
+          `Category "${parsed.categoryName}" doesn't exist yet — pick one manually, or leave it uncategorised.`,
+        );
+      }
+    } else {
+      setPasteNote(undefined);
+    }
+  }
+
   return (
     <form action={formAction} className="space-y-4 max-w-xl">
+      {!initial && (
+        <div className="rounded-lg border border-dashed border-slate-300 dark:border-slate-700 p-3 space-y-2">
+          <label className="block text-sm font-medium">Quick-fill by pasting</label>
+          <textarea
+            value={pasteText}
+            onChange={(e) => setPasteText(e.target.value)}
+            rows={2}
+            placeholder="Paste a row copied from your spreadsheet, or just the details (date, vendor, amount...)"
+            className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent px-3 py-2 text-sm"
+          />
+          <div className="flex items-center gap-3 flex-wrap">
+            <button
+              type="button"
+              onClick={handleFillFromPaste}
+              className="rounded-lg border border-slate-300 dark:border-slate-700 text-sm font-medium px-3 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800"
+            >
+              Fill in fields
+            </button>
+            {pasteNote && <p className="text-xs text-amber-600 dark:text-amber-400">{pasteNote}</p>}
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium mb-1">Date</label>
@@ -43,7 +141,8 @@ export function ExpenseForm({
             type="date"
             name="date"
             required
-            defaultValue={initial?.date ?? new Date().toISOString().slice(0, 10)}
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
             className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent px-3 py-2 text-sm"
           />
         </div>
@@ -55,7 +154,8 @@ export function ExpenseForm({
             step="0.01"
             min="0.01"
             required
-            defaultValue={initial?.amount}
+            value={amount}
+            onChange={(e) => handleAmountChange(e.target.value)}
             className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent px-3 py-2 text-sm"
           />
         </div>
@@ -67,7 +167,8 @@ export function ExpenseForm({
           type="text"
           name="description"
           required
-          defaultValue={initial?.description}
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
           placeholder="e.g. Adobe Creative Cloud subscription"
           className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent px-3 py-2 text-sm"
         />
@@ -79,7 +180,8 @@ export function ExpenseForm({
           <input
             type="text"
             name="vendor"
-            defaultValue={initial?.vendor}
+            value={vendor}
+            onChange={(e) => setVendor(e.target.value)}
             className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent px-3 py-2 text-sm"
           />
         </div>
@@ -87,7 +189,8 @@ export function ExpenseForm({
           <label className="block text-sm font-medium mb-1">Category</label>
           <select
             name="categoryId"
-            defaultValue={initial?.categoryId ?? ""}
+            value={categoryId ?? ""}
+            onChange={(e) => setCategoryId(e.target.value)}
             className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent px-3 py-2 text-sm"
           >
             <option value="">Uncategorised</option>
@@ -102,15 +205,32 @@ export function ExpenseForm({
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium mb-1">Tax/GST amount (optional)</label>
+          <div className="flex items-center justify-between mb-1">
+            <label className="block text-sm font-medium">Tax/GST amount</label>
+            {!gstAuto && (
+              <button
+                type="button"
+                onClick={handleAutoGstToggle}
+                className="text-xs text-emerald-600 underline"
+              >
+                Auto-calculate (10%)
+              </button>
+            )}
+          </div>
           <input
             type="number"
             name="taxAmount"
             step="0.01"
             min="0"
-            defaultValue={initial?.taxAmount ?? ""}
+            value={taxAmount}
+            onChange={(e) => handleTaxChange(e.target.value)}
             className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent px-3 py-2 text-sm"
           />
+          {gstAuto && (
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+              Auto-calculated as 1/11 of the amount (10% GST)
+            </p>
+          )}
         </div>
         <div>
           <label className="block text-sm font-medium mb-1">Payment method</label>
@@ -118,7 +238,8 @@ export function ExpenseForm({
             type="text"
             name="paymentMethod"
             placeholder="e.g. Business card"
-            defaultValue={initial?.paymentMethod}
+            value={paymentMethod}
+            onChange={(e) => setPaymentMethod(e.target.value)}
             className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent px-3 py-2 text-sm"
           />
         </div>
@@ -129,7 +250,8 @@ export function ExpenseForm({
         <textarea
           name="notes"
           rows={2}
-          defaultValue={initial?.notes}
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
           className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent px-3 py-2 text-sm"
         />
       </div>
